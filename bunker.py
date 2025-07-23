@@ -84,6 +84,7 @@ def main():
     app.add_handler(CommandHandler("join", join))
     app.add_handler(CommandHandler("begin", begin))
 
+    print("Бот запущен и готов к работе!")  # Сообщение о запуске
     app.run_polling()
 
 if __name__ == "__main__":
