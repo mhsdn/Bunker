@@ -393,7 +393,7 @@ class DummyMessage:
         # Используем bot.send_message напрямую, т.к. это эмуляция
         pass
 
-async def main():
+def main():
     application = ApplicationBuilder().token(os.getenv("BOT_TOKEN")).build()
 
     application.add_handler(CommandHandler("start", start))
@@ -407,8 +407,7 @@ async def main():
     application.add_handler(CallbackQueryHandler(vote_handler, pattern="^vote_"))
 
     print("Бот запущен")
-    await application.run_polling()
+    application.run_polling()
 
 if __name__ == "__main__":
-    import asyncio
-    asyncio.run(main())
+    main()
