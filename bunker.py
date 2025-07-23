@@ -10,22 +10,50 @@ from telegram.ext import (
     CallbackQueryHandler,
 )
 
-# Загружаем переменные окружения из .env
+# Загрузка переменных из .env
 load_dotenv()
 
-# Загружаем карточки из файла
+# Загрузка карточек из файла
 with open("cards.json", "r", encoding="utf-8") as f:
     cards = json.load(f)
 
-games = {}  # словарь с текущими играми: chat_id -> {players: [], started: bool}
+# Хранилище игр
+games = {}  # chat_id -> {players: [], started: bool}
 
+
+# === Команда /start ===
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        "👋 Привет! Я — *Bunker Bot*, бот для карточной ролевой игры на выживание.\n\n"
+        "🎲 Здесь ты можешь:\n"
+        "• Создать игру в групповом чате\n"
+        "• Позвать друзей\n"
+        "• Получить случайную роль с характеристиками:\n"
+        "  🧑 Профессия\n"
+        "  🎂 Возраст\n"
+        "  ❤️ Здоровье\n"
+        "  🎨 Хобби\n"
+        "  🎒 Багаж\n"
+        "  🕵️ Секрет\n\n"
+        "🚀 Как начать:\n"
+        "1. Добавь меня в групповой чат\n"
+        "2. Введи /startgame\n"
+        "3. Игроки нажимают «Присоединиться»\n"
+        "4. Когда все готовы — нажмите «Начать игру»\n"
+        "5. Карточки придут каждому в личку 🤫\n\n"
+        "Готовы выживать в бункере? Поехали!",
+        parse_mode="Markdown"
+    )
+
+
+# === Команда /startgame ===
 async def startgame(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     if chat_id in games and games[chat_id]["started"]:
         await update.message.reply_text("Игра уже идёт!")
         return
     games[chat_id] = {"players": [], "started": False}
-    
+
     keyboard = [
         [InlineKeyboardButton("Присоединиться", callback_data="join_game")],
         [InlineKeyboardButton("Начать игру", callback_data="begin_game")],
@@ -33,13 +61,15 @@ async def startgame(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     await update.message.reply_text(
-        "Игра создана! Игроки могут присоединяться нажатием кнопки ниже.",
+        "Игра создана! Нажмите кнопку ниже, чтобы присоединиться или начать игру.",
         reply_markup=reply_markup,
     )
 
+
+# === Обработка нажатий кнопок ===
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()  # Подтверждаем callback
+    await query.answer()
 
     chat_id = query.message.chat.id
     user = query.from_user
@@ -54,7 +84,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         games[chat_id]["players"].append(user.id)
         await query.answer(f"{user.first_name} присоединился к игре!")
 
-        # Обновим сообщение, чтобы показать список игроков
+        # Обновляем список игроков
         players_names = []
         for player_id in games[chat_id]["players"]:
             try:
@@ -63,7 +93,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             except:
                 players_names.append("Игрок")
         await query.edit_message_text(
-            f"Игра создана! Игроки:\n" + "\n".join(players_names),
+            "Игра создана! Текущие игроки:\n" + "\n".join(players_names),
             reply_markup=query.message.reply_markup,
         )
 
@@ -92,33 +122,38 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await context.bot.send_message(
                     chat_id=player_id,
                     text=(
-                        f"Ваша карточка:\n"
+                        f"🃏 *Ваша карточка:*\n"
                         f"Профессия: {card['profession']}\n"
                         f"Возраст: {card['age']}\n"
                         f"Здоровье: {card['health']}\n"
                         f"Хобби: {card['hobby']}\n"
                         f"Багаж: {card['baggage']}\n"
-                        f"Секрет: {card['secret']}\n"
+                        f"Секрет: {card['secret']}"
                     ),
+                    parse_mode="Markdown"
                 )
             except Exception as e:
-                print(f"Не удалось отправить сообщение игроку {player_id}: {e}")
+                print(f"❌ Не удалось отправить сообщение игроку {player_id}: {e}")
 
-        await query.edit_message_text("Карточки розданы! Игра началась.")
+        await query.edit_message_text("✅ Карточки розданы! Игра началась.")
 
+
+# === Запуск бота ===
 def main():
     token = os.getenv("TELEGRAM_BOT_TOKEN")
     if not token:
-        print("Ошибка: TELEGRAM_BOT_TOKEN не найден в .env")
+        print("❌ Ошибка: TELEGRAM_BOT_TOKEN не найден в .env")
         return
 
     app = ApplicationBuilder().token(token).build()
 
+    app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("startgame", startgame))
     app.add_handler(CallbackQueryHandler(button_handler))
 
-    print("Бот запущен и готов к работе!")
+    print("✅ Bunker Bot запущен и готов к работе!")
     app.run_polling()
+
 
 if __name__ == "__main__":
     main()
